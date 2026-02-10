@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.dart_tool/
+.packages
+build/
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+.eggs/
+
+# Environment
+.env
+*.env.local
+firebase-service-account.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+
+# Python
+backend/.venv/
+backend/venv/
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/htmlcov/
+backend/.coverage
+backend/.mypy_cache/
+
+# Docker
+*.log

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1045306902402",
+    "project_id": "hotncold-f2bb6",
+    "storage_bucket": "hotncold-f2bb6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045306902402:android:4ca7fa66b0df8f02b6719b",
+        "android_client_info": {
+          "package_name": "com.hotncold.hotncold"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1045306902402-tc331mtj250vdpmi6r28ssa5covmeptm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkt0OjXZggRPwyaoMtZKXc0zyrCQcQecY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1045306902402-tc331mtj250vdpmi6r28ssa5covmeptm.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1045306902402-qvv94q7got4unjuephu6ndob19t2krof.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hotncold.hotncold"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
