@@ -50,5 +50,9 @@ dependencies {
     // ARCore and Sceneform for AR functionality
     implementation("com.google.ar:core:1.41.0")
     implementation("com.google.ar.sceneform:core:1.17.1")
+    
+    // Sceneform assets for loading GLTF/GLB models
+    implementation("com.google.ar.sceneform:assets:1.17.1")
+    implementation("com.google.ar.sceneform:filament-android:1.17.1")
 }
 

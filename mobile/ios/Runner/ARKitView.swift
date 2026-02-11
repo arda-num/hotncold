@@ -64,6 +64,7 @@ class ARKitView: NSObject, FlutterPlatformView {
     private var rewardDistance: Double = 0
     private var rewardElevation: Double = 0
     private var rewardType: String = "points"
+    private var modelPath: String?
     private var userLocation: CLLocationCoordinate2D?
     
     init(frame: CGRect, viewIdentifier viewId: Int64, messenger: FlutterBinaryMessenger, eventHandler: AREventStreamHandler) {
@@ -114,12 +115,19 @@ class ARKitView: NSObject, FlutterPlatformView {
             return
         }
         
+        // Optional model path
+        let modelPathArg = args["modelPath"] as? String
+        
         print("[ARKit] Starting AR session: bearing=\(bearing)°, distance=\(distance)m, elevation=\(elevation)°")
+        if let path = modelPathArg {
+            print("[ARKit] Using 3D model: \(path)")
+        }
         
         rewardBearing = bearing
         rewardDistance = distance
         rewardElevation = elevation
         rewardType = type
+        modelPath = modelPathArg
         userLocation = CLLocationCoordinate2D(latitude: lat, longitude: lon)
         
         // Configure AR session
@@ -225,87 +233,121 @@ class ARKitView: NSObject, FlutterPlatformView {
         
         print("[ARKit] Creating 3D reward node of type: \(type)")
         
-        // Small, compact size
-        let scaleFactor: Float = 1.0
-        
-        let geometry: SCNGeometry
-        let color: UIColor
-        
-        switch type {
-        case "points":
-            // Gold coin
-            geometry = SCNCylinder(radius: 0.15, height: 0.04)
-            color = .systemYellow
-        case "coupon":
-            // Green ticket
-            geometry = SCNBox(width: 0.2, height: 0.3, length: 0.02, chamferRadius: 0.01)
-            color = .systemGreen
-        case "raffle":
-            // Purple sphere
-            geometry = SCNSphere(radius: 0.12)
-            color = .systemPurple
-        case "product":
-            // Red box
-            geometry = SCNBox(width: 0.2, height: 0.2, length: 0.2, chamferRadius: 0.02)
-            color = .systemRed
-        default:
-            // Orange sphere
-            geometry = SCNSphere(radius: 0.12)
-            color = .systemOrange
+        // Load 3D model
+        guard let modelPath = self.modelPath else {
+            print("[ARKit] ERROR: No model path provided")
+            return containerNode
         }
         
-        print("[ARKit] Creating \(color) object with scale \(scaleFactor)x")
+        print("[ARKit] Loading 3D model from: \(modelPath)")
+        guard let modelNode = load3DModel(from: modelPath) else {
+            print("[ARKit] ERROR: Failed to load model")
+            return containerNode
+        }
         
-        let node = SCNNode(geometry: geometry)
-        
-        // Apply bright material for visibility
-        let material = SCNMaterial()
-        material.diffuse.contents = color
-        material.emission.contents = color.withAlphaComponent(0.5)
-        material.specular.contents = UIColor.white
-        material.shininess = 1.0
-        geometry.materials = [material]
-        
-        // Apply scale
-        node.scale = SCNVector3(scaleFactor, scaleFactor, scaleFactor)
-        
-        print("[ARKit] Node created with scale: \(scaleFactor)")
-        
-        // Add floating animation
-        let floatAction = SCNAction.sequence([
-            SCNAction.moveBy(x: 0, y: 0.15, z: 0, duration: 1.5),
-            SCNAction.moveBy(x: 0, y: -0.15, z: 0, duration: 1.5)
-        ])
-        node.runAction(SCNAction.repeatForever(floatAction))
-        
-        // Add rotation animation
-        let rotateAction = SCNAction.rotateBy(x: 0, y: CGFloat.pi * 2, z: 0, duration: 3.0)
-        node.runAction(SCNAction.repeatForever(rotateAction))
+        containerNode.addChildNode(modelNode)
         
         // Make it tappable
-        node.name = "reward"
+        modelNode.name = "reward"
         
-        containerNode.addChildNode(node)
-        
-        // Add a glowing ring around it
-        let ringGeometry = SCNTorus(ringRadius: 0.25 * CGFloat(scaleFactor), pipeRadius: 0.03 * CGFloat(scaleFactor))
-        let ringNode = SCNNode(geometry: ringGeometry)
-        let ringMaterial = SCNMaterial()
-        ringMaterial.diffuse.contents = UIColor.white
-        ringMaterial.emission.contents = UIColor.white.withAlphaComponent(0.7)
-        ringGeometry.materials = [ringMaterial]
-        ringNode.position = SCNVector3(0, 0, 0)
-        ringNode.eulerAngles = SCNVector3(CGFloat.pi / 2, 0, 0)
-        containerNode.addChildNode(ringNode)
-        
-        // Rotate the ring
-        let ringRotateAction = SCNAction.rotateBy(x: 0, y: 0, z: CGFloat.pi * 2, duration: 2.0)
-        ringNode.runAction(SCNAction.repeatForever(ringRotateAction))
-        
-        print("[ARKit] Created reward node with ring")
+        print("[ARKit] Created reward node with model")
         
         return containerNode
     }
+    
+    private func load3DModel(from path: String) -> SCNNode? {
+        print("[ARKit] load3DModel called with path: \(path)")
+        
+        // Get the Flutter asset key path
+        let key = FlutterDartProject.lookupKey(forAsset: path)
+        print("[ARKit] Flutter asset key: \(key)")
+        
+        guard let modelPath = Bundle.main.path(forResource: key, ofType: nil) else {
+            print("[ARKit] ERROR: Model file not found at path: \(path)")
+            print("[ARKit] ERROR: Tried to find resource with key: \(key)")
+            return nil
+        }
+        
+        print("[ARKit] Model found at: \(modelPath)")
+        let modelURL = URL(fileURLWithPath: modelPath)
+        
+        do {
+            // Load the 3D scene with options for GLTF/GLB support
+            let options: [SCNSceneSource.LoadingOption: Any] = [
+                .checkConsistency: true,
+                .flattenScene: false,
+                .createNormalsIfAbsent: true,
+                .convertToYUp: true
+            ]
+            
+            let scene = try SCNScene(url: modelURL, options: options)
+            print("[ARKit] Scene loaded successfully")
+            
+            // Get the root node
+            let modelNode = SCNNode()
+            let childCount = scene.rootNode.childNodes.count
+            print("[ARKit] Scene has \(childCount) child nodes")
+            
+            for child in scene.rootNode.childNodes {
+                modelNode.addChildNode(child)
+            }
+            
+            // Enable and play all animations from the model
+            let animationKeys = modelNode.animationKeys
+            print("[ARKit] Model has \(animationKeys.count) animations")
+            
+            var hasAnimations = false
+            
+            // Check for animations in the scene
+            scene.rootNode.enumerateChildNodes { (node, _) in
+                for key in node.animationKeys {
+                    if let animation = node.animation(forKey: key) {
+                        animation.repeatCount = .infinity
+                        node.addAnimation(animation, forKey: key)
+                        print("[ARKit] Playing animation: \(key)")
+                        hasAnimations = true
+                    }
+                }
+            }
+            
+            // Play animations on the model node itself
+            for key in animationKeys {
+                if let animation = modelNode.animation(forKey: key) {
+                    animation.repeatCount = .infinity
+                    modelNode.addAnimation(animation, forKey: key)
+                    print("[ARKit] Playing model animation: \(key)")
+                    hasAnimations = true
+                }
+            }
+            
+            // If no animations found, add rotation animation
+            if !hasAnimations {
+                print("[ARKit] No embedded animations found, adding rotation")
+                let rotateAction = SCNAction.rotateBy(x: 0, y: CGFloat.pi * 2, z: 0, duration: 3.0)
+                modelNode.runAction(SCNAction.repeatForever(rotateAction))
+            }
+            
+            // Make the model tappable
+            modelNode.name = "reward"
+            
+            // Scale model 2x for visibility
+            modelNode.scale = SCNVector3(2.0, 2.0, 2.0)
+            print("[ARKit] Model scaled 2x for visibility")
+            
+            // Check bounding box
+            let (min, max) = modelNode.boundingBox
+            print("[ARKit] Model bounding box: min=\(min), max=\(max)")
+            
+            print("[ARKit] Successfully loaded 3D model")
+            return modelNode
+            
+        } catch {
+            print("[ARKit] ERROR loading 3D model: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+
     
     private func collectReward(result: @escaping FlutterResult) {
         // Remove reward node with animation

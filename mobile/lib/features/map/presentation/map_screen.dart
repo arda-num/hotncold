@@ -42,7 +42,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final positionAsync = ref.watch(userPositionProvider);
     final locationsAsync = ref.watch(nearbyLocationsProvider);
-    
+
     // Move map to user location when position first becomes available
     ref.listen(userPositionProvider, (previous, next) {
       next.whenData((pos) {
@@ -163,10 +163,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   extra: {
                     'locationId': _selectedLocation!.id,
                     'locationName': _selectedLocation!.name,
-                    'rewardBearing': _selectedLocation!.rewardTemplate?.bearingDegrees ?? 45.0,
-                    'rewardElevation': _selectedLocation!.rewardTemplate?.elevationDegrees ?? 0.0,
+                    'rewardBearing':
+                        _selectedLocation!.rewardTemplate?.bearingDegrees ??
+                        45.0,
+                    'rewardElevation':
+                        _selectedLocation!.rewardTemplate?.elevationDegrees ??
+                        0.0,
                     'distanceM': _selectedLocation!.distanceM,
-                    'rewardType': _selectedLocation!.rewardTemplate?.rewardType ?? 'points',
+                    'rewardType':
+                        _selectedLocation!.rewardTemplate?.rewardType ??
+                        'points',
                   },
                 ),
                 onClose: () => setState(() => _selectedLocation = null),

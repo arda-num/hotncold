@@ -4,8 +4,12 @@ import 'package:flutter/services.dart';
 
 /// Platform channel for native ARKit (iOS) and ARCore (Android) integration.
 class ARPlatformChannel {
-  static const MethodChannel _channel = MethodChannel('com.hotncold.ar/native_ar');
-  static const EventChannel _eventChannel = EventChannel('com.hotncold.ar/ar_events');
+  static const MethodChannel _channel = MethodChannel(
+    'com.hotncold.ar/native_ar',
+  );
+  static const EventChannel _eventChannel = EventChannel(
+    'com.hotncold.ar/ar_events',
+  );
 
   /// Check if AR is supported on this device.
   static Future<bool> isARSupported() async {
@@ -18,12 +22,13 @@ class ARPlatformChannel {
   }
 
   /// Initialize AR session with reward data.
-  /// 
+  ///
   /// Parameters:
   /// - rewardBearing: Direction to reward in degrees (0-360, 0=north)
   /// - rewardDistance: Distance to reward in meters
   /// - rewardElevation: Elevation angle in degrees (-90 to +90)
   /// - rewardType: Type of reward (points, coupon, raffle, product)
+  /// - modelPath: Optional path to .glb 3D model file (e.g., 'assets/models/reward.glb')
   static Future<void> startARSession({
     required double rewardBearing,
     required double rewardDistance,
@@ -31,6 +36,7 @@ class ARPlatformChannel {
     required String rewardType,
     required double userLatitude,
     required double userLongitude,
+    String? modelPath,
   }) async {
     try {
       await _channel.invokeMethod('startARSession', {
@@ -40,6 +46,7 @@ class ARPlatformChannel {
         'rewardType': rewardType,
         'userLatitude': userLatitude,
         'userLongitude': userLongitude,
+        'modelPath': modelPath,
       });
     } catch (e) {
       throw Exception('Failed to start AR session: $e');

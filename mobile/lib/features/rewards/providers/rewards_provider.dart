@@ -61,7 +61,7 @@ class RewardWallet {
 final rewardsProvider = FutureProvider<RewardWallet>((ref) async {
   // Wait for authentication state
   final authState = await ref.watch(authStateProvider.future);
-  
+
   // Return empty wallet if not authenticated
   if (authState == null) {
     return RewardWallet(totalPoints: 0, totalRewards: 0, rewards: []);

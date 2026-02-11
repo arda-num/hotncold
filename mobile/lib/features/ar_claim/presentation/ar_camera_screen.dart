@@ -22,6 +22,7 @@ class ARCameraScreen extends ConsumerStatefulWidget {
   final double rewardElevation;
   final double distanceM;
   final String rewardType;
+  final String? modelPath;
 
   const ARCameraScreen({
     required this.locationId,
@@ -30,6 +31,7 @@ class ARCameraScreen extends ConsumerStatefulWidget {
     required this.rewardElevation,
     required this.distanceM,
     this.rewardType = 'points',
+    this.modelPath,
     super.key,
   });
 
@@ -56,12 +58,14 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
     try {
       // Get user position
       _userPosition = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       // Check if AR is supported
       final supported = await ARPlatformChannel.isARSupported();
-      
+
       if (!supported) {
         setState(() {
           _isLoading = false;
@@ -80,7 +84,7 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         // Give the platform view a moment to initialize
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         try {
           // Start AR session
           await ARPlatformChannel.startARSession(
@@ -90,6 +94,7 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
             rewardType: widget.rewardType,
             userLatitude: _userPosition!.latitude,
             userLongitude: _userPosition!.longitude,
+            modelPath: widget.modelPath,
           );
 
           setState(() => _isLoading = false);
@@ -110,7 +115,7 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
 
   void _handleAREvent(Map<String, dynamic> event) {
     final eventType = parseAREventType(event['type'] as String?);
-    
+
     switch (eventType) {
       case AREventType.arSessionStarted:
         // AR session successfully started
@@ -229,35 +234,40 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
       body: Stack(
         children: [
           // Native AR view (show early to ensure platform view is created)
-          if (_arSupported && _errorMessage == null)
-            _buildNativeARView(),
+          if (_arSupported && _errorMessage == null) _buildNativeARView(),
 
           // Loading overlay
-          if (_isLoading)
-            _buildLoadingOverlay(),
+          if (_isLoading) _buildLoadingOverlay(),
 
           // Error overlay
-          if (_errorMessage != null)
-            _buildErrorOverlay(),
+          if (_errorMessage != null) _buildErrorOverlay(),
 
           // Top bar
           _buildTopBar(),
 
           // Instruction overlay (when AR is active)
-          if (_arSupported && !_isLoading && _errorMessage == null && !_hasCollected)
+          if (_arSupported &&
+              !_isLoading &&
+              _errorMessage == null &&
+              !_hasCollected)
             _buildInstructionOverlay(),
-          
+
           // Direction indicator
-          if (_arSupported && !_isLoading && _errorMessage == null && !_hasCollected)
+          if (_arSupported &&
+              !_isLoading &&
+              _errorMessage == null &&
+              !_hasCollected)
             _buildDirectionIndicator(),
-          
+
           // Center crosshair
-          if (_arSupported && !_isLoading && _errorMessage == null && !_hasCollected)
+          if (_arSupported &&
+              !_isLoading &&
+              _errorMessage == null &&
+              !_hasCollected)
             _buildCrosshair(),
 
           // Collecting overlay
-          if (_isCollecting)
-            _buildCollectingOverlay(),
+          if (_isCollecting) _buildCollectingOverlay(),
         ],
       ),
     );
@@ -438,7 +448,11 @@ class _ARCameraScreenState extends ConsumerState<ARCameraScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.location_searching, color: Colors.white, size: 20),
+              const Icon(
+                Icons.location_searching,
+                color: Colors.white,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 '${widget.rewardBearing.toStringAsFixed(0)}° • ${widget.distanceM.toStringAsFixed(0)}m',

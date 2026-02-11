@@ -56,7 +56,7 @@ class AuthService {
     await _initGoogleSignIn();
 
     // Check if authenticate method is supported on this platform
-    final supportsAuth = await _googleSignIn!.supportsAuthenticate();
+    final supportsAuth = _googleSignIn!.supportsAuthenticate();
 
     if (!supportsAuth) {
       throw Exception(
@@ -66,14 +66,14 @@ class AuthService {
 
     try {
       // Trigger the Google Sign-In authentication
-      final GoogleSignInAccount? result = await _googleSignIn!.authenticate();
+      final GoogleSignInAccount result = await _googleSignIn!.authenticate();
 
       if (result == null) {
         throw Exception('Google Sign-In authentication returned null');
       }
 
       // Obtain the auth details from the result
-      final GoogleSignInAuthentication googleAuth = await result.authentication;
+      final GoogleSignInAuthentication googleAuth = result.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(

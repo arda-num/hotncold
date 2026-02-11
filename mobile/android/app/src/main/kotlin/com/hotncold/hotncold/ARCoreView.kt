@@ -50,6 +50,7 @@ class ARCoreView(
     private var rewardDistance: Double = 0.0
     private var rewardElevation: Double = 0.0
     private var rewardType: String = "points"
+    private var modelPath: String? = null
     private var userLatitude: Double = 0.0
     private var userLongitude: Double = 0.0
     
@@ -101,8 +102,13 @@ class ARCoreView(
             rewardDistance = (args["rewardDistance"] as? Number)?.toDouble() ?: 0.0
             rewardElevation = (args["rewardElevation"] as? Number)?.toDouble() ?: 0.0
             rewardType = args["rewardType"] as? String ?: "points"
+            modelPath = args["modelPath"] as? String
             userLatitude = (args["userLatitude"] as? Number)?.toDouble() ?: 0.0
             userLongitude = (args["userLongitude"] as? Number)?.toDouble() ?: 0.0
+            
+            if (modelPath != null) {
+                android.util.Log.d("ARCore", "Using 3D model: $modelPath")
+            }
             
             // Start AR session
             val session = arFragment.arSceneView.session
@@ -171,65 +177,17 @@ class ARCoreView(
     }
     
     private fun create3DRewardNode(anchor: Anchor) {
-        // For now, create simple colored shapes as placeholders
-        // In production, you would load GLB/GLTF models here
         val activity = context as? Activity ?: return
         
-        val (color, size, shape) = when (rewardType) {
-            "points" -> Triple(
-                com.google.ar.sceneform.rendering.Color(1f, 0.84f, 0f), // Gold
-                Vector3(0.15f, 0.04f, 0.15f), // Cylinder dimensions
-                "cylinder"
-            )
-            "coupon" -> Triple(
-                com.google.ar.sceneform.rendering.Color(0f, 0.8f, 0f), // Green
-                Vector3(0.2f, 0.3f, 0.02f), // Box dimensions
-                "box"
-            )
-            "raffle" -> Triple(
-                com.google.ar.sceneform.rendering.Color(0.6f, 0f, 1f), // Purple
-                Vector3(0.12f, 0.12f, 0.12f), // Sphere dimensions
-                "sphere"
-            )
-            "product" -> Triple(
-                com.google.ar.sceneform.rendering.Color(1f, 0f, 0f), // Red
-                Vector3(0.2f, 0.2f, 0.2f), // Box dimensions
-                "box"
-            )
-            else -> Triple(
-                com.google.ar.sceneform.rendering.Color(1f, 0.5f, 0f), // Orange
-                Vector3(0.15f, 0.15f, 0.15f), // Sphere dimensions
-                "sphere"
-            )
+        // Load 3D model (required)
+        if (modelPath == null) {
+            android.util.Log.e("ARCore", "ERROR: No model path provided")
+            sendEvent(mapOf("type" to "arSessionFailed", "error" to "No 3D model specified"))
+            return
         }
         
-        MaterialFactory.makeOpaqueWithColor(activity, color)
-            .thenAccept { material ->
-                val renderable = when (shape) {
-                    "cylinder" -> ShapeFactory.makeCylinder(size.x, size.y, Vector3.zero(), material)
-                    "box" -> ShapeFactory.makeCube(size, Vector3.zero(), material)
-                    else -> ShapeFactory.makeSphere(size.x, Vector3.zero(), material)
-                }
-                
-                // Create anchor node
-                val anchorNode = AnchorNode(anchor)
-                anchorNode.setParent(arFragment.arSceneView.scene)
-                
-                // Create reward node
-                val node = Node().apply {
-                    this.renderable = renderable
-                    this.setParent(anchorNode)
-                    this.localPosition = Vector3(0f, size.y, 0f) // Lift slightly
-                    
-                    // Add tap listener
-                    this.setOnTapListener { _, _ ->
-                        sendEvent(mapOf("type" to "rewardCollected"))
-                    }
-                }
-                
-                rewardNode = node
-                sendEvent(mapOf("type" to "rewardInView"))
-            }
+        android.util.Log.d("ARCore", "Loading 3D model from: $modelPath")
+        load3DModel(anchor, activity)
     }
     
     private fun collectReward(result: MethodChannel.Result) {
@@ -250,6 +208,92 @@ class ARCoreView(
     
     private fun sendEvent(event: Map<String, Any?>) {
         eventSink?.success(event)
+    }
+    
+    private fun load3DModel(anchor: Anchor, activity: Activity) {
+        val path = modelPath ?: run {
+            android.util.Log.e("ARCore", "ERROR: modelPath is null")
+            return
+        }
+        
+        android.util.Log.d("ARCore", "Loading 3D model from path: $path")
+        
+        // Convert Flutter asset path to Android asset path
+        val assetPath = io.flutter.embedding.engine.loader.FlutterLoader.getInstance()
+            .getLookupKeyForAsset(path)
+        
+        android.util.Log.d("ARCore", "Flutter asset key: $assetPath")
+        
+        try {
+            // Load the GLB model using ModelRenderable
+            ModelRenderable.builder()
+                .setSource(activity, android.net.Uri.parse(assetPath))
+                .setIsFilamentGltf(true)
+                .build()
+                .thenAccept { renderable ->
+                    android.util.Log.d("ARCore", "Successfully loaded 3D model")
+                    android.util.Log.d("ARCore", "Creating anchor node")
+                    
+                    // Create anchor node
+                    val anchorNode = AnchorNode(anchor)
+                    anchorNode.setParent(arFragment.arSceneView.scene)
+                    
+                    // Create node for the model
+                    val node = Node().apply {
+                        this.renderable = renderable
+                        this.setParent(anchorNode)
+                        
+                        // Scale model 2x for visibility
+                        this.localScale = Vector3(2f, 2f, 2f)
+                        android.util.Log.d("ARCore", "Model scaled 2x for visibility")
+                        
+                        // Play all animations from the model
+                        val animationData = renderable.animationDataList
+                        android.util.Log.d("ARCore", "Model has ${animationData.size} animations")
+                        
+                        if (animationData.isNotEmpty()) {
+                            for (i in 0 until animationData.size) {
+                                val animator = com.google.ar.sceneform.animation.ModelAnimator(animationData[i], renderable)
+                                animator.repeatCount = Int.MAX_VALUE // Loop forever
+                                animator.start()
+                                android.util.Log.d("ARCore", "Playing animation $i")
+                            }
+                        } else {
+                            // If no animations in model, add continuous rotation
+                            android.util.Log.d("ARCore", "No embedded animations found, adding rotation")
+                            
+                            // Use scene update to rotate continuously
+                            arFragment.arSceneView.scene.addOnUpdateListener { frameTime ->
+                                if (this.parent != null) {
+                                    val rotationSpeed = 0.5f // degrees per frame
+                                    val newRotation = this.localRotation
+                                    this.localRotation = com.google.ar.sceneform.math.Quaternion.axisAngle(
+                                        Vector3(0f, 1f, 0f),
+                                        frameTime.deltaSeconds * 60f * rotationSpeed
+                                    ).times(newRotation)
+                                }
+                            }
+                        }
+                        
+                        // Add tap listener
+                        this.setOnTapListener { _, _ ->
+                            sendEvent(mapOf("type" to "rewardCollected"))
+                        }
+                    }
+                    
+                    android.util.Log.d("ARCore", "Node created with position: ${node.worldPosition}")
+                    rewardNode = node
+                    sendEvent(mapOf("type" to "rewardInView"))
+                }
+                .exceptionally { throwable ->
+                    android.util.Log.e("ARCore", "Error loading 3D model: ${throwable.message}")
+                    sendEvent(mapOf("type" to "arSessionFailed", "error" to "Failed to load 3D model"))
+                    null
+                }
+        } catch (e: Exception) {
+            android.util.Log.e("ARCore", "Exception loading 3D model: ${e.message}")
+            sendEvent(mapOf("type" to "arSessionFailed", "error" to "Failed to load 3D model"))
+        }
     }
 }
 

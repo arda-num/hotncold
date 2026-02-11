@@ -115,7 +115,7 @@ final nearbyLocationsProvider = FutureProvider<List<TreasureLocation>>((
 ) async {
   // Wait for authentication state
   final authState = await ref.watch(authStateProvider.future);
-  
+
   // Return empty list if not authenticated
   if (authState == null) {
     return [];

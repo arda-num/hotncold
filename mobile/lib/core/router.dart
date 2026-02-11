@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -73,6 +75,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             rewardElevation: extra['rewardElevation'] as double? ?? 0.0,
             distanceM: extra['distanceM'] as double? ?? 1000.0,
             rewardType: extra['rewardType'] as String? ?? 'points',
+            modelPath: Platform.isIOS
+                ? 'assets/models/double.usdz'
+                : 'assets/models/double.glb',
           );
         },
       ),
